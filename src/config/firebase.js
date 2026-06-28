@@ -3,7 +3,7 @@ dotenv.config();
 
 import fs from "fs";
 import path from "path";
-import * as admin from "firebase-admin";
+import { initializeApp, getApps, cert, applicationDefault } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 
 function getCredentialPath() {
@@ -13,31 +13,33 @@ function getCredentialPath() {
 }
 
 function initializeFirestore() {
-  if (admin.apps?.length) {
-    return getFirestore(admin.app());
+  // Guardamos las apps inicializadas de forma segura usando el método oficial getApps()
+  const apps = getApps();
+  
+  if (apps.length > 0) {
+    return getFirestore(apps[0]);
   }
 
   // --- OPCIÓN LOCAL: Si existe el archivo JSON físico ---
   const credentialPath = getCredentialPath();
   if (fs.existsSync(credentialPath)) {
     const serviceAccount = JSON.parse(fs.readFileSync(credentialPath, "utf8"));
-    const app = admin.initializeApp({
-      credential: admin.cert(serviceAccount),
+    const app = initializeApp({
+      credential: cert(serviceAccount),
       projectId: serviceAccount.project_id || process.env.PROJECT_ID
     });
     return getFirestore(app);
   }
 
-  // --- OPCIÓN VERCEL: Simplificada a las 3 variables obligatorias ---
+  // --- OPCIÓN VERCEL: Si no hay archivo pero están las variables obligatorias ---
   if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
     
-    // Limpiamos comillas extra y reparamos los saltos de línea de la clave
     const formattedPrivateKey = process.env.FIREBASE_PRIVATE_KEY
-      .replace(/^"|"$/g, '')          // Elimina comillas al principio o al final si existen
-      .replace(/\\n/g, '\n');         // Convierte el texto "\n" en saltos reales
+      .replace(/^"|"$/g, '')          // Limpia comillas externas
+      .replace(/\\n/g, '\n');         // Repara saltos de línea escritos como texto
 
-    const app = admin.initializeApp({
-      credential: admin.cert({
+    const app = initializeApp({
+      credential: cert({
         projectId: process.env.FIREBASE_PROJECT_ID,
         clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
         privateKey: formattedPrivateKey,
@@ -49,8 +51,8 @@ function initializeFirestore() {
 
   // --- OPCIÓN DE RESPALDO: Google Application Default ---
   if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-    const app = admin.initializeApp({
-      credential: admin.applicationDefault(),
+    const app = initializeApp({
+      credential: applicationDefault(),
       projectId: process.env.PROJECT_ID
     });
     return getFirestore(app);
