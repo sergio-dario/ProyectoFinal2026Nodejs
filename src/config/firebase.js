@@ -28,22 +28,19 @@ function initializeFirestore() {
     return getFirestore(app);
   }
 
-  // --- OPCIÓN VERCEL: Si no hay archivo pero están las variables de entorno individuales ---
-  if (process.env.FIREBASE_TYPE && process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_PRIVATE_KEY) {
+  // --- OPCIÓN VERCEL: Simplificada a las 3 variables obligatorias ---
+  if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
+    
+    // Limpiamos comillas extra y reparamos los saltos de línea de la clave
+    const formattedPrivateKey = process.env.FIREBASE_PRIVATE_KEY
+      .replace(/^"|"$/g, '')          // Elimina comillas al principio o al final si existen
+      .replace(/\\n/g, '\n');         // Convierte el texto "\n" en saltos reales
+
     const app = admin.initializeApp({
       credential: admin.cert({
-        type: process.env.FIREBASE_TYPE,
         projectId: process.env.FIREBASE_PROJECT_ID,
-        privateKeyId: process.env.FIREBASE_PRIVATE_KEY_ID,
-        // Limpiamos los saltos de línea de la clave
-        privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
         clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        clientId: process.env.FIREBASE_CLIENT_ID,
-        authUri: process.env.FIREBASE_AUTH_URI,
-        tokenUri: process.env.FIREBASE_TOKEN_URI,
-        authProviderX509CertUrl: process.env.FIREBASE_AUTH_PROVIDER_X509_CERT_URL,
-        clientX509CertUrl: process.env.FIREBASE_CLIENT_X509_CERT_URL,
-        universeDomain: process.env.FIREBASE_UNIVERSE_DOMAIN
+        privateKey: formattedPrivateKey,
       }),
       projectId: process.env.FIREBASE_PROJECT_ID
     });
